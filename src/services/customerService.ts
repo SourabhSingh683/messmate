@@ -66,27 +66,24 @@ export const addCustomer = async (
   mobile: string,
   email?: string
 ): Promise<void> => {
-  // First create the profile directly in the profiles table
   try {
     // Create new UUID for the profile
     const profileId = crypto.randomUUID();
     
-    // Insert directly into profiles table
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        id: profileId,
-        first_name: firstName,
-        last_name: lastName,
-        address: address,
-        mobile: mobile,
-        email: email || null,
-        role: 'student'
-      });
+    // Call the RPC function to create a profile
+    const { error: rpcError } = await supabase.rpc('create_customer_profile', {
+      profile_id: profileId,
+      first_name_val: firstName,
+      last_name_val: lastName,
+      address_val: address,
+      mobile_val: mobile,
+      email_val: email || null,
+      role_val: 'student'
+    });
     
-    if (profileError) {
-      console.error('Failed to create profile:', profileError);
-      throw profileError;
+    if (rpcError) {
+      console.error('Failed to create profile via RPC:', rpcError);
+      throw rpcError;
     }
     
     console.log('Profile created successfully with ID:', profileId);

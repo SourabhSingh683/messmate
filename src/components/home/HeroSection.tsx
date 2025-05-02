@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/AuthContext';
 
-const heroImage = '/lovable-uploads/b802a6dc-65c7-44fe-b9f4-22fb71a658fd.png';
+const heroImage = '/lovable-uploads/3617945f-bd51-4a1a-aa40-c36e6abfcd1c.png';
 
 const HeroSection = () => {
   const navigate = useNavigate();

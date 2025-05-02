@@ -10,14 +10,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronLeft, MapPin, Phone, Mail, AlertTriangle, Calendar, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 const MessDetails = () => {
   const { messId } = useParams<{ messId: string }>();
   const [mess, setMess] = useState<MessService | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!user) {
@@ -69,6 +72,72 @@ const MessDetails = () => {
 
   const handleBack = () => {
     navigate(-1);
+  };
+
+  const handleSubscribe = async () => {
+    if (!user || !messId || !profile) {
+      toast({
+        title: "Authentication required",
+        description: "Please login to subscribe to this mess",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsSubscribing(true);
+      
+      // Check if already subscribed
+      const { data: existingSubscription, error: checkError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('student_id', user.id)
+        .eq('mess_id', messId)
+        .eq('status', 'active')
+        .maybeSingle();
+      
+      if (checkError) throw new Error(checkError.message);
+      
+      if (existingSubscription) {
+        toast({
+          title: "Already subscribed",
+          description: "You are already subscribed to this mess",
+          variant: "default",
+        });
+        return;
+      }
+      
+      // Create subscription
+      const { error: subscribeError } = await supabase
+        .from('subscriptions')
+        .insert({
+          student_id: user.id,
+          mess_id: messId,
+          status: 'active',
+          start_date: new Date().toISOString().split('T')[0],
+          end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        });
+      
+      if (subscribeError) throw new Error(subscribeError.message);
+      
+      toast({
+        title: "Subscription successful!",
+        description: "You have successfully subscribed to this mess",
+        variant: "default",
+      });
+      
+      // Redirect to student dashboard
+      navigate('/student-dashboard');
+    } catch (error: any) {
+      console.error('Subscription error:', error);
+      toast({
+        title: "Subscription failed",
+        description: error.message || "Failed to subscribe to this mess",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubscribing(false);
+    }
   };
 
   const renderMessDetails = () => {
@@ -189,8 +258,12 @@ const MessDetails = () => {
                   </div>
                 </div>
                 
-                <Button className="mt-8 w-full lg:w-auto bg-[#8B4513] hover:bg-[#5C2C0C]">
-                  Subscribe to this Mess
+                <Button 
+                  className="mt-8 w-full lg:w-auto bg-[#8B4513] hover:bg-[#5C2C0C]"
+                  onClick={handleSubscribe}
+                  disabled={isSubscribing}
+                >
+                  {isSubscribing ? "Processing..." : "Subscribe to this Mess"}
                 </Button>
               </CardContent>
             </Card>
