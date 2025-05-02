@@ -67,32 +67,45 @@ export const addCustomer = async (
   email?: string
 ): Promise<void> => {
   try {
-    // Create new UUID for the profile
-    const profileId = crypto.randomUUID();
-    
-    // Call the RPC function to create a profile
-    const { error: rpcError } = await supabase.rpc('create_customer_profile', {
-      profile_id: profileId,
-      first_name_val: firstName,
-      last_name_val: lastName,
-      address_val: address,
-      mobile_val: mobile,
-      email_val: email || null,
-      role_val: 'student'
+    // First create auth user and profile through custom RPC function
+    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+      email: email || `${firstName.toLowerCase()}.${lastName.toLowerCase()}${Date.now()}@messmate.com`,
+      password: `Messmate${Date.now()}`,
+      email_confirm: true,
+      user_metadata: {
+        first_name: firstName,
+        last_name: lastName,
+        role: 'student'
+      }
     });
     
-    if (rpcError) {
-      console.error('Failed to create profile via RPC:', rpcError);
-      throw rpcError;
+    if (authError) {
+      console.error('Failed to create user:', authError);
+      throw new Error(`Failed to create user profile: ${authError.message}`);
+    }
+
+    const userId = authUser.user.id;
+    
+    // Update profile with additional information
+    const { error: profileUpdateError } = await supabase
+      .from('profiles')
+      .update({
+        address: address,
+        mobile: mobile,
+        email: email
+      })
+      .eq('id', userId);
+      
+    if (profileUpdateError) {
+      console.error('Failed to update profile:', profileUpdateError);
+      throw profileUpdateError;
     }
     
-    console.log('Profile created successfully with ID:', profileId);
-    
-    // Then create the subscription linking the customer to the mess
+    // Now create the subscription linking the customer to the mess
     const { error: subscriptionError } = await supabase
       .from('subscriptions')
       .insert({
-        student_id: profileId,
+        student_id: userId,
         mess_id: messId,
         status: 'active',
         start_date: new Date().toISOString().split('T')[0],
@@ -104,7 +117,7 @@ export const addCustomer = async (
       throw subscriptionError;
     }
     
-    console.log('Subscription created successfully');
+    console.log('Customer added successfully with ID:', userId);
   } catch (error: any) {
     console.error('Error in addCustomer:', error);
     throw new Error(error.message || 'Failed to create customer');
