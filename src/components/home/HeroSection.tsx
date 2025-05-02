@@ -128,7 +128,7 @@ const HeroSection = () => {
             transition={{ duration: 0.8 }}
           >
             <img
-              src={heroImage}
+              src="placeholder-hero.jpeg"
               alt="Students enjoying mess food"
               className="aspect-video rounded-xl object-cover w-full max-w-[600px] shadow-xl transition-all duration-300 hover:shadow-2xl transform hover:scale-[1.02] border border-gray-200 dark:border-gray-800"
             />

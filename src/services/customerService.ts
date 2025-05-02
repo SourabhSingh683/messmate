@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { fetchFromSupabase } from '@/utils/supabaseRawApi';
 
@@ -67,45 +66,38 @@ export const addCustomer = async (
   email?: string
 ): Promise<void> => {
   try {
-    // Create a unique ID for the new profile
-    const newUserId = crypto.randomUUID();
-    
-    // Use the database function to create a profile
-    const { error: funcError } = await supabase.rpc(
-      'create_customer_profile',
-      {
-        profile_id: newUserId,
-        first_name_val: firstName,
-        last_name_val: lastName,
-        address_val: address,
-        mobile_val: mobile,
-        email_val: email || `${firstName.toLowerCase()}.${lastName.toLowerCase()}${Date.now()}@example.com`,
-        role_val: 'student'
-      }
-    );
-    
-    if (funcError) {
-      console.error('Error creating customer profile:', funcError);
-      throw new Error(`Failed to create user profile: ${funcError.message}`);
-    }
-    
-    // Create the subscription linking the customer to the mess
+    // 1. Generate a unique ID for the customer
+    const customerId = crypto.randomUUID();
+
+    // 2. Insert into profiles
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: customerId,
+        first_name: firstName,
+        last_name: lastName,
+        address,
+        mobile,
+        email,
+        role: 'student'
+      });
+
+    if (profileError) throw profileError;
+
+    // 3. Insert into subscriptions
     const { error: subscriptionError } = await supabase
       .from('subscriptions')
       .insert({
-        student_id: newUserId,
+        student_id: customerId,
         mess_id: messId,
         status: 'active',
         start_date: new Date().toISOString().split('T')[0],
         end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       });
-      
-    if (subscriptionError) {
-      console.error('Failed to create subscription:', subscriptionError);
-      throw subscriptionError;
-    }
-    
-    console.log('Customer added successfully with ID:', newUserId);
+
+    if (subscriptionError) throw subscriptionError;
+
+    console.log('Customer added successfully with ID:', customerId);
   } catch (error: any) {
     console.error('Error in addCustomer:', error);
     throw new Error(error.message || 'Failed to create customer');
