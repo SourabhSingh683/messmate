@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/AuthContext';
 
 // Update the hero image to use the new image
-const heroImage = '/lovable-uploads/df4bdbc7-d3c7-4885-8d98-ab5379c8ccb6.png';
+const heroImage = '/lovable-uploads/f5b368e3-1ccb-48ea-89d1-412a18823527.png';
 
 const HeroSection = () => {
   const navigate = useNavigate();

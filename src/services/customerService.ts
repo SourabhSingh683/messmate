@@ -67,45 +67,37 @@ export const addCustomer = async (
   email?: string
 ): Promise<void> => {
   try {
-    // First create auth user and profile through custom RPC function
-    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-      email: email || `${firstName.toLowerCase()}.${lastName.toLowerCase()}${Date.now()}@messmate.com`,
-      password: `Messmate${Date.now()}`,
-      email_confirm: true,
-      user_metadata: {
+    // Create a unique username/email based on first name, last name and timestamp
+    const timestamp = Date.now();
+    const generatedEmail = email || `${firstName.toLowerCase()}.${lastName.toLowerCase()}${timestamp}@example.com`;
+    const password = `Messmate${timestamp}`;
+    
+    // Create profile directly in the profiles table with a generated UUID
+    const newUserId = crypto.randomUUID();
+    
+    // Insert the profile
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: newUserId,
         first_name: firstName,
         last_name: lastName,
-        role: 'student'
-      }
-    });
-    
-    if (authError) {
-      console.error('Failed to create user:', authError);
-      throw new Error(`Failed to create user profile: ${authError.message}`);
-    }
-
-    const userId = authUser.user.id;
-    
-    // Update profile with additional information
-    const { error: profileUpdateError } = await supabase
-      .from('profiles')
-      .update({
         address: address,
         mobile: mobile,
-        email: email
-      })
-      .eq('id', userId);
-      
-    if (profileUpdateError) {
-      console.error('Failed to update profile:', profileUpdateError);
-      throw profileUpdateError;
+        email: email || generatedEmail,
+        role: 'student'
+      });
+    
+    if (profileError) {
+      console.error('Failed to create profile:', profileError);
+      throw new Error(`Failed to create user profile: ${profileError.message}`);
     }
     
-    // Now create the subscription linking the customer to the mess
+    // Create the subscription linking the customer to the mess
     const { error: subscriptionError } = await supabase
       .from('subscriptions')
       .insert({
-        student_id: userId,
+        student_id: newUserId,
         mess_id: messId,
         status: 'active',
         start_date: new Date().toISOString().split('T')[0],
@@ -117,7 +109,7 @@ export const addCustomer = async (
       throw subscriptionError;
     }
     
-    console.log('Customer added successfully with ID:', userId);
+    console.log('Customer added successfully with ID:', newUserId);
   } catch (error: any) {
     console.error('Error in addCustomer:', error);
     throw new Error(error.message || 'Failed to create customer');
