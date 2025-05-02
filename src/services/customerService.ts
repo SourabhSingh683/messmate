@@ -67,30 +67,26 @@ export const addCustomer = async (
   email?: string
 ): Promise<void> => {
   try {
-    // Create a unique username/email based on first name, last name and timestamp
-    const timestamp = Date.now();
-    const generatedEmail = email || `${firstName.toLowerCase()}.${lastName.toLowerCase()}${timestamp}@example.com`;
-    const password = `Messmate${timestamp}`;
-    
-    // Create profile directly in the profiles table with a generated UUID
+    // Create a unique ID for the new profile
     const newUserId = crypto.randomUUID();
     
-    // Insert the profile
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        id: newUserId,
-        first_name: firstName,
-        last_name: lastName,
-        address: address,
-        mobile: mobile,
-        email: email || generatedEmail,
-        role: 'student'
-      });
+    // Use the database function to create a profile
+    const { error: funcError } = await supabase.rpc(
+      'create_customer_profile',
+      {
+        profile_id: newUserId,
+        first_name_val: firstName,
+        last_name_val: lastName,
+        address_val: address,
+        mobile_val: mobile,
+        email_val: email || `${firstName.toLowerCase()}.${lastName.toLowerCase()}${Date.now()}@example.com`,
+        role_val: 'student'
+      }
+    );
     
-    if (profileError) {
-      console.error('Failed to create profile:', profileError);
-      throw new Error(`Failed to create user profile: ${profileError.message}`);
+    if (funcError) {
+      console.error('Error creating customer profile:', funcError);
+      throw new Error(`Failed to create user profile: ${funcError.message}`);
     }
     
     // Create the subscription linking the customer to the mess

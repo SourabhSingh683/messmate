@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -8,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/AuthContext';
 
 // Update the hero image to use the new image
-const heroImage = '/lovable-uploads/f5b368e3-1ccb-48ea-89d1-412a18823527.png';
+const heroImage = '/lovable-uploads/efc62114-42c7-4a5c-b5e7-334dc1f96fbd.png';
 
 const HeroSection = () => {
   const navigate = useNavigate();
