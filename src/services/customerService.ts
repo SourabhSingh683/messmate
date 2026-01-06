@@ -66,20 +66,48 @@ export const addCustomer = async (
   email?: string
 ): Promise<void> => {
   try {
-    // 1. Generate a unique ID for the customer
-    const customerId = crypto.randomUUID();
+    // 1. Create auth user first (required because profiles.id references auth.users.id)
+    // Generate a unique email if not provided
+    const userEmail = email || `customer_${Date.now()}_${Math.random().toString(36).substring(7)}@messmate.local`;
+    // Generate a random password (customer won't use it to login, but required for auth)
+    const tempPassword = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + 'A1!';
 
-    // 2. Insert into profiles
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        id: customerId,
+    // Use regular signUp API (will create auth user)
+    // Note: This requires email confirmation to be disabled in Supabase Auth settings
+    // OR we need to use an Edge Function with service role
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: userEmail,
+      password: tempPassword,
+      options: {
+        data: {
         first_name: firstName,
         last_name: lastName,
-        address,
-        mobile,
-        email,
-        role: 'student'
+          role: 'student',
+          is_customer: true // Flag to indicate this is a customer account
+        },
+        email_redirect_to: undefined // No redirect needed
+      }
+    });
+
+    if (authError) {
+      throw new Error(`Failed to create auth user: ${authError.message}. Please ensure email confirmation is disabled in Supabase Auth settings for customer creation.`);
+    }
+
+    if (!authData?.user?.id) {
+      throw new Error('Failed to create auth user: No user ID returned');
+    }
+
+    const customerId = authData.user.id;
+
+    // 2. Create profile using RPC function (bypasses RLS with SECURITY DEFINER)
+    const { error: profileError } = await supabase.rpc('create_customer_profile', {
+      profile_id: customerId,
+      first_name_val: firstName,
+      last_name_val: lastName,
+      address_val: address,
+      mobile_val: mobile,
+      email_val: email || userEmail,
+      role_val: 'student'
       });
 
     if (profileError) throw profileError;
